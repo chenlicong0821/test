@@ -1,18 +1,49 @@
 package main
 
-import "fmt"
-func main() {
-    add_func := add(1,2)
-    fmt.Println(add_func())
-    fmt.Println(add_func())
-    fmt.Println(add_func())
+import (
+    "fmt"
+)
+
+// 定义一个 DivideError 结构
+type DivideError struct {
+    dividee int
+    divider int
 }
 
-// 闭包使用方法
-func add(x1, x2 int) func()(int,int)  {
-    i := 0
-    return func() (int,int){
-        i++
-        return i,x1+x2
+// 实现 `error` 接口
+func (de *DivideError) Error() string {
+    strFormat := `
+    Cannot proceed, the divider is zero.
+    dividee: %d
+    divider: 0
+`
+    return fmt.Sprintf(strFormat, de.dividee)
+}
+
+// 定义 `int` 类型除法运算的函数
+func Divide(varDividee int, varDivider int) (a int, errorMsg string) {
+    if varDivider == 0 {
+        dData := DivideError{
+            dividee: varDividee,
+            divider: varDivider,
+        }
+        errorMsg = dData.Error()
+        return 1, errorMsg
+    } else {
+        return varDividee / varDivider, ""
     }
+
+}
+
+func main() {
+
+    // 正常情况
+    if result, errorMsg := Divide(100, 10); errorMsg == "" {
+        fmt.Println("100/10 = ", result)
+    }
+    // 当被除数为零的时候会返回错误信息
+    if a, errorMsg := Divide(100, 0); errorMsg != "" {
+        fmt.Println(a, "errorMsg is: ", errorMsg)
+    }
+
 }
