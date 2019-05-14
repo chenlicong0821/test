@@ -64,5 +64,12 @@ int main(int argc, char const *argv[])
     cout << a.tradePrice << endl;
     cout << a.turnOver << endl;
 
+
+    cout << &(a.buySellSide) - (int *)&a << endl;
+
+    cout << &(a.buySellSide) << endl;
+    cout << a.brokerQueueBuy << endl;
+    cout << &(a.brokerQueueSell[39]) - (int *)&a << endl;
+
     return 0;
 }
