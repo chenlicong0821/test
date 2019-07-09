@@ -12,4 +12,3 @@ int main(int argc, char **argv)
     printf("%f\n", c);
     return 0;
 }
- 
