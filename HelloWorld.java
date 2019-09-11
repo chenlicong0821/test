@@ -1,5 +1,9 @@
 public class HelloWorld{
 	public static void main(String[] args){
-		System.out.println("Hello World!");
+		int count =0;  
+		for(int i=0;i<10;i++){  
+		 count=count++;  
+		}  
+		System.out.println("count="+count);  
 	}
 }

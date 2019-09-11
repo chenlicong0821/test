@@ -3,12 +3,13 @@
 
 int main(int argc, char **argv)
 {
-    int a = 1.0;
-    float b = a/2;
-    float c = 2/3;
+    int count =0;
+    int i=0;
+    for(;i<10;i++){  
+        count=count++;  
+    }  
 
-    printf("%d\n", a);
-    printf("%f\n", b);
-    printf("%f\n", c);
+    printf("%d\n", count);
+
     return 0;
 }
