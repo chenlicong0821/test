@@ -4,10 +4,11 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-    int count =0;
-    for(int i=0;i<10;i++){  
-        count=count++;  
-    }  
+    int count = 0;
+    for (int i = 0; i < 10; i++)
+    {
+        count = count++;
+    }
 
     cout << count << endl;
 
