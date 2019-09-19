@@ -15,7 +15,7 @@ public class Phone extends MerchandiseV2 {
         String name, String id, int count, double soldPrice, double purchasePrice,
         double screenSize, double cpuHZ, int memoryG, int storageG, String brand, String os
     ) {
-        super(name, id, count, soldPrice, purchasePrice);
+        super(name, id, count, soldPrice * 1.2, purchasePrice);
         this.screenSize = screenSize;
         this.cpuHZ = cpuHZ;
         this.memoryG = memoryG;
@@ -25,6 +25,7 @@ public class Phone extends MerchandiseV2 {
     }
 
     public double buy(int count) {
+        System.out.println("Phone里的buy(int count)");
         if (count > MAX_BUY_ONE_ORDER) {
             System.out.println("购买失败，手机一次最多只能买" + MAX_BUY_ONE_ORDER + "个");
             return -2;
@@ -96,5 +97,9 @@ public class Phone extends MerchandiseV2 {
 
     public void setOs(String os) {
         this.os = os;
+    }
+
+    public static void staticMethod(){
+        System.out.println("staticMethod in Phone");
     }
 }

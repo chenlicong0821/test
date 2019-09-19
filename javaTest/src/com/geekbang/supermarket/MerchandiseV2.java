@@ -17,6 +17,13 @@ public class MerchandiseV2 {
         this.purchasePrice = purchasePrice;
     }
 
+    public MerchandiseV2(String name, String id, int count, double soldPrice) {
+        // double purPrice = soldPrice * 0.8;
+        // this(name, id, count, soldPrice, purchasePrice);
+        this(name, id, count, soldPrice, soldPrice * 0.8);
+        // double purPrice = soldPrice * 0.8;
+    }
+
     public MerchandiseV2() {
         this("无名", "000", 0, 1, 1.1);
 
@@ -37,6 +44,7 @@ public class MerchandiseV2 {
     }
 
     public double buy(int count) {
+        System.out.println("Merchandise里的buy(int count)");
         if (this.count < count) {
             System.out.println("购买失败，库存不够");
             return -1;
@@ -45,6 +53,16 @@ public class MerchandiseV2 {
         double cost = count * soldPrice;
         System.out.println("购买成功，花费为" + cost);
         return cost;
+    }
+
+
+    public double buy(boolean reallyBuy) {
+        System.out.println("Merchandise里的buy(boolean reallyBuy)");
+        if (reallyBuy) {
+            return buy(1);
+        } else {
+            return -1;
+        }
     }
 
 
@@ -87,4 +105,9 @@ public class MerchandiseV2 {
     public void setPurchasePrice(double purchasePrice) {
         this.purchasePrice = purchasePrice;
     }
+
+    public static void staticMethod(){
+        System.out.println("staticMethod in MerchandiseV2");
+    }
+
 }
