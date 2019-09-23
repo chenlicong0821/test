@@ -1,0 +1,19 @@
+# Python codec #    
+###################### 
+*.pyc
+
+# MacOS generated files #    
+######################    
+.DS_Store
+.Trashes
+
+# vscode
+.vscode
+
+# dir
+/nginx/dlib-19.17
+/nginx/logs
+/nginx_2/logs
+/javaTest/javaTest.iml
+/javaTest/.idea
+/javaTest/out
