@@ -17,28 +17,23 @@ public class ShellColorChangePhone extends Phone {
         this.enableShellColorChange = enableShellColorChange;
     }
 
-    public void describe() {
-        super.describe();
-        System.out.println("壳色随着屏幕色变的功能开启状态：" + enableShellColorChange);
-    }
-
-    public double calculateProfit() {
-        // TODO 手机不好卖，厂家提供10个点的返点
-        return super.calculateProfit() + super.getPurchasePrice() * 0.1;
-    }
-
-    @Override
-    public double buy(int count) {
-        System.out.println("ShellColorChangePhone里的buy(int count)");
-        if (count < 2) {
-            System.out.println("买一送一了解一下，不单卖哦！");
-            return -1;
+    public double buy(int count){
+        if(count < 2){
+            System.out.println("不单卖，至少买两个");
+            return -2;
         }
         return super.buy(count);
     }
 
-    public static void staticMethod(){
-        System.out.println("staticMethod in ShellColorChangePhone");
+    @Override
+    public void describe2() {
+        super.describe2();
+        System.out.println("壳色随着屏幕色变的功能开启状态：" + enableShellColorChange);
     }
 
+    @Override
+    public double calculateProfit() {
+        // TODO 手机太奇葩不好卖，厂家提供10个点的返点
+        return super.calculateProfit() + super.getPurchasePrice() * 0.1;
+    }
 }
