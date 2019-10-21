@@ -25,64 +25,19 @@ public class LittleSuperMarket {
 
         merchandises = new MerchandiseV2[merchandiseCount];
         for (int i = 0; i < merchandises.length; i++) {
-            // 创建手机，手机壳变色手机，和普通商品，都放在商品数组里
-            MerchandiseV2 m = null;
-            if (i > 0 & i % 100 == 0) {
-                m = new ShellColorChangePhone(
-                    "商品" + i,
-                    "ID" + i,
-                    count,
-                    1999,
-                    999,
-                    4.5,
-                    3.5,
-                    4,
-                    128,
-                    "三星",
-                    "Android"
-                );
-            } else if (i > 0 & i % 10 == 0) {
-                m = new Phone(
-                    "商品" + i,
-                    "ID" + i,
-                    count,
-                    1999,
-                    999,
-                    4.5,
-                    3.5,
-                    4,
-                    128,
-                    "索尼",
-                    "Android"
-                );
-            } else {
-                double purchasePrice = Math.random() * 200;
-                m = new MerchandiseV2(
-                    "商品" + i,
-                    "ID" + i,
-                    count,
-                    1999,
-                    999
-                );
-            }
+            double purchasePrice = Math.random() * 200;
+            // 创建并给商品的属性赋值
+            MerchandiseV2 m = new MerchandiseV2(
+                "商品" + i,
+                "ID" + i,
+                count,
+                purchasePrice * (1 + Math.random()),
+                purchasePrice
+            );
             // 用创建的商品，给商品数组的第i个引用赋值，all和小超市的商品数组引用指向的是同一个数组对象
             merchandises[i] = m;
         }
         merchandiseSold = new int[merchandises.length];
-    }
-
-    public boolean findMerchandise(MerchandiseV2 target) {
-        int i = 0;
-        for (MerchandiseV2 m : merchandises) {
-//            boolean match = m.equals(target);
-            boolean match = (m == target);
-            if (match) {
-                System.out.println("找到了商品，位置在" + i);
-                return true;
-            }
-            i++;
-        }
-        return false;
     }
 
     // 简单的访问成员变量

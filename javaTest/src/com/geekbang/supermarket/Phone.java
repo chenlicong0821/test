@@ -1,6 +1,9 @@
 package com.geekbang.supermarket;
 
-public class Phone extends MerchandiseV2 {
+import java.util.Date;
+
+// >> TODO Phone如果也实现了ExpireDateMerchandise接口，类似的东西还要再做一遍，怎么办？
+public class Phone extends MerchandiseV2 implements ExpireDateMerchandise {
 
     // 给Phone增加新的属性和方法
     private double screenSize;
@@ -9,43 +12,35 @@ public class Phone extends MerchandiseV2 {
     private int storageG;
     private String brand;
     private String os;
-    private static int MAX_BUY_ONE_ORDER = 5;
 
     public Phone(
         String name, String id, int count, double soldPrice, double purchasePrice,
         double screenSize, double cpuHZ, int memoryG, int storageG, String brand, String os
     ) {
-        super(name, id, count, soldPrice, purchasePrice);
+
         this.screenSize = screenSize;
         this.cpuHZ = cpuHZ;
         this.memoryG = memoryG;
         this.storageG = storageG;
         this.brand = brand;
         this.os = os;
+
+        this.setName(name);
+        this.setId(id);
+        this.setCount(count);
+        this.setSoldPrice(soldPrice);
+        this.setPurchasePrice(purchasePrice);
     }
 
-
-
-    public double buy(int count) {
-        if (count > MAX_BUY_ONE_ORDER) {
-            System.out.println("购买失败，手机一次最多只能买" + MAX_BUY_ONE_ORDER + "个");
-            return -2;
-        }
-        return super.buy(count);
-    }
-
-    public String getName() {
-        return this.brand + ":" + this.os + ":" + super.getName();
-    }
-
-    public void describe2() {
+    public void describePhone() {
         System.out.println("此手机商品属性如下");
-//        super.describe();
+        describe();
         System.out.println("手机厂商为" + brand + "；系统为" + os + "；硬件配置如下：\n" +
             "屏幕：" + screenSize + "寸\n" +
             "cpu主频" + cpuHZ + " GHz\n" +
             "内存" + memoryG + "Gb\n" +
-            "存储空间" + storageG + "Gb");
+            "存储空间" + storageG + "Gb\n");
+
     }
 
     public boolean meetCondition() {
@@ -98,5 +93,30 @@ public class Phone extends MerchandiseV2 {
 
     public void setOs(String os) {
         this.os = os;
+    }
+
+    @Override
+    public boolean notExpireInDays(int days) {
+        return false;
+    }
+
+    @Override
+    public Date getProducedDate() {
+        return null;
+    }
+
+    @Override
+    public Date getExpireDate() {
+        return null;
+    }
+
+    @Override
+    public double leftDatePercentage() {
+        return 0;
+    }
+
+    @Override
+    public double actualValueNow(double leftDatePercentage) {
+        return soldPrice * (leftDatePercentage + 0.5);
     }
 }
