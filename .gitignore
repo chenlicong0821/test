@@ -17,4 +17,6 @@
 /javaTest/javaTest.iml
 /javaTest/.idea
 /javaTest/out
+/pyTest/.idea
+/pyTest/venv
 /.idea
