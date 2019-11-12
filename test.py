@@ -1,9 +1,19 @@
 # -*- coding: utf-8 -*-
 
-attributes = ['name', 'dob', 'gender']
-values = [['jason', '2000-01-01', 'male'],
-          ['mike', '1999-01-01', 'male'],
-          ['nancy', '2001-02-01', 'female']]
+import os
 
-d = [{attributes[index]:v for index,v in enumerate(value)} for value in values]
-print(d)
+
+def findAllFile(topPath):
+    fileList = []
+
+    for root, dirs, files in os.walk(topPath):
+        for fileName in files:
+            fileList.append(os.path.join(root, fileName))
+
+    return fileList
+
+
+topPath = '/home/chenlicong/code/me/test'
+fileList = findAllFile(topPath)
+for f in fileList:
+    print f
