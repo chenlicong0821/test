@@ -1,16 +1,56 @@
+
 #include <iostream>
+#include <vector>
 
 using namespace std;
 
-int main(int argc, char *argv[])
+class Obj1
 {
-    int count = 0;
-    for (int i = 0; i < 10; i++)
+public:
+    Obj1()
     {
-        count = count++;
+        cout << "Obj1()\n";
     }
+    Obj1(const Obj1 &)
+    {
+        cout << "Obj1(const Obj1&)\n";
+    }
+    Obj1(Obj1 &&)
+    {
+        cout << "Obj1(Obj1&&)\n";
+    }
+};
 
-    cout << count << endl;
+class Obj2
+{
+public:
+    Obj2()
+    {
+        cout << "Obj2()\n";
+    }
+    Obj2(const Obj2 &)
+    {
+        cout << "Obj2(const Obj2&)\n";
+    }
+    Obj2(Obj2 &&) noexcept
+    {
+        cout << "Obj2(Obj2&&)\n";
+    }
+};
 
-    return 0;
+int main()
+{
+    vector<Obj1> v1;
+    v1.reserve(2);
+    v1.emplace_back();
+    v1.emplace_back();
+    v1.emplace_back();
+    v1.emplace_back();
+
+    vector<Obj2> v2;
+    v2.reserve(2);
+    v2.push_back(Obj2());
+    v2.push_back(Obj2());
+    v2.push_back(Obj2());
+    v2.emplace_back();
 }
