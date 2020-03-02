@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 
+import datetime
 import logging
 import os
 import requests
@@ -20,14 +21,14 @@ def logInit(logfile):
                         filemode='a')
 
 
-class txQtIdx(IntEnum):
+class TCQtIdx(IntEnum):
     MARKET_ID = 0               # 市场标识，1-sh，51-sz
     CHS_NAME = 1                # 证券中文简称
     RAW_SYMBOL = 2              # 证券代码（不含市场标识）
     LAST_PRICE = 3              # 最新价格
     PREV_CLOSE = 4              # 昨收价
     OPEN_PRICE = 5              # 今开价
-    VOLUME = 6                  # 成交量：手
+    TOTAL_VOLUME = 6            # 总成交量：手，实际同VOLUME
     OUT_BUY = 7                 # 外盘：手
     IN_SELL = 8                 # 内盘：手
     BUY1_PRICE = 9              # 买1价
@@ -57,7 +58,7 @@ class txQtIdx(IntEnum):
     HIGH_PRICE = 33             # 最高价格
     LOW_PRICE = 34              # 最低价格
     LAST_VOLUME_AMOUNT = 35     # 最新价/成交量(手)/成交额(元)
-    VOLUME2 = 36                # 成交量(手)
+    VOLUME = 36                 # 成交量(手)
     AMOUNT = 37                 # 成交额(万元)，整数
     TURNOVER_RATE = 38          # 换手率（%）
     PE_TTM = 39                 # 市盈率(TTM)
@@ -93,6 +94,7 @@ class txQtIdx(IntEnum):
 class dataFromTencent():
     def __init__(self):
         self.STARMarketPattern = re.compile(r'sh68[89]+')
+        self.marketIdDict = {'1':'sh', '51':'sz'}
 
     def _getVolume(self, code, rawVolume):
         if (self.STARMarketPattern.match(code)):    # 科创板
@@ -100,26 +102,45 @@ class dataFromTencent():
         else:                                       # 非科创板
             return rawVolume * 100
 
+    def _checkCodeFlag(self, codeFlag, code):
+        if codeFlag.startswith('v_') and (codeFlag[2:] == code):
+            return True
+        else:
+            log.warning('codeFlag:{} not match code:{}'.format(codeFlag, code))
+            return False
+
+    def _checkCodeData(self, codeData, code):
+        if self.marketIdDict[codeData[TCQtIdx.MARKET_ID]] + codeData[TCQtIdx.RAW_SYMBOL] == code:
+            return True
+        else:
+            log.warning('codeFlag:{} not match code:{}'.format(codeFlag, code))
+            return False
+
     def _parseData(self, text, codeList):
-        qtList = text.split(';\n')
-        for qt in qtList[:-1]:
+        qtList = text.split(';\n')[:-1]     # 每一条数据都是以';\n'结尾，split之后最后一项就是空字符串、所以忽略之
+        for i, qt in enumerate(qtList):
             codeFlag, codeData = qt.split('=')
-            codeData = codeData.strip('"')
-            info = codeData.split('~')
-            log.info(info)
+            info = codeData.strip('"').split('~')
+            log.debug(codeData)
 
-            idx = 0
-            for item in info:
-                print(idx, item, txQtIdx._value2member_map_[idx])
-                idx += 1
+            # idx = 0
+            # for item in info:
+            #     print(idx, item, TCQtIdx._value2member_map_[idx])
+            #     idx += 1
 
-            # volume = self._getVolume(code, float(info[36] or 0))
-            # quoteTime = info[30]
-            # quoteTime = datetime.datetime.strptime(quoteTime, "%Y%m%d%H%M%S")
-            # if quoteTime < datetime.datetime(2000, 1, 1):
-            #     return (None, "quoteTime %s incorrect" % quoteTime)
-            # pe = info[39] if len(info) > 39 else 0.0
-            # cap = info[45] if len(info) > 45 else 0.0
+            code = codeList[i]
+            if not(self._checkCodeFlag(codeFlag, code) and self._checkCodeData(info, code)):
+                continue
+
+            volume = self._getVolume(code, int(info[TCQtIdx.VOLUME] or 0))
+            quoteTime = info[TCQtIdx.QUOTE_DATETIME]
+            quoteTime = datetime.datetime.strptime(quoteTime, "%Y%m%d%H%M%S")
+            if quoteTime < datetime.datetime(2020, 1, 1):
+                log.warning("quoteTime {} incorrect".format(quoteTime))
+                continue
+            pe = float(info[TCQtIdx.PE_TTM]) if info[TCQtIdx.PE_TTM] else 0.0
+            cap = float(info[TCQtIdx.TOTAL_MARKET_VALUE]) if info[TCQtIdx.TOTAL_MARKET_VALUE] else 0.0
+            print(volume, quoteTime, pe, cap)
             # parsedData = {'source_name': self.source, 'code': code, 'name': info[1], 'last': info[3], 'close': info[4],
             #               'open': info[5], 'amountchange': info[31], 'percentchange': info[32],
             #               'high': info[33], 'low': info[34], 'volume': volume, 'turnover': info[37], 'pe': pe,
