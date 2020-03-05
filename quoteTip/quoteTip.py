@@ -119,7 +119,7 @@ class dataFromTencent():
             return False
 
     def _parseData(self, text, codeList):
-        ret = []
+        ret = {}
 
         log.debug(text)
         qtList = text.split(';\n')[:-1]  # 每一条数据都是以';\n'结尾，split之后最后一项就是空字符串、所以忽略之
@@ -134,14 +134,12 @@ class dataFromTencent():
 
             code = codeList[i]
             if not (self._checkCodeFlag(codeFlag, code) and self._checkCodeData(info, code)):
-                ret.append([])
                 continue
 
-            quoteTime = info[TCQtIdx.QUOTE_DATETIME]
-            quoteTime = datetime.datetime.strptime(quoteTime, "%Y%m%d%H%M%S")
-            if quoteTime < datetime.datetime(2020, 1, 1):
-                log.warning("quoteTime {} incorrect".format(quoteTime))
-                ret.append([])
+            qtDatetime = info[TCQtIdx.QUOTE_DATETIME]
+            qtDatetime = datetime.datetime.strptime(qtDatetime, "%Y%m%d%H%M%S")
+            if qtDatetime < datetime.datetime(2020, 1, 1):
+                log.warning("quoteTime {} incorrect".format(qtDatetime))
                 continue
             chsName = info[TCQtIdx.CHS_NAME]
             lastPrice = float(info[TCQtIdx.LAST_PRICE])
@@ -155,7 +153,7 @@ class dataFromTencent():
             # amount = float(info[TCQtIdx.AMOUNT] or 0) * 10000
             # peTTM = float(info[TCQtIdx.PE_TTM]) if info[TCQtIdx.PE_TTM] else 0.0
             # cap = float(info[TCQtIdx.TOTAL_MARKET_VALUE] or 0) * 100000000
-            ret.append([code, chsName, lastPrice, pctChg])
+            ret[code] = [code, chsName, qtDatetime.strftime('%m-%d %H:%M:%S'), lastPrice, pctChg]
 
         return ret
 
@@ -184,13 +182,26 @@ class dataFromTencent():
         return ret
 
 
+class dataProcess():
+    def __init__(self):
+        self.money = 200
+        self.buyChgPct = -1.1
+        self.sellChgPct = 1.1
+        self.totalChgPct1 = 10
+        self.totalChgPct2 = 10
+
+    def calData(self, codeData, qtData):
+        for item in dataList:
+            pass
+
+
 if __name__ == '__main__':
     logInit('./log/quoteTip.log')
     logname = os.path.splitext(os.path.basename(__file__))[0]
     log = logging.getLogger(logname)
 
-    codeList = ['sh000919', 'sh000001', 'sh000922']
+    # 以2019-09-10的收盘价为基准
+    codeData = {'sh000001': 3021.2, 'sh000919': 4902.99, 'sh000922': 4381.25}
     # codeList = ['sh688001', 'sz000063', 'sh000001']
-    tcData = dataFromTencent()
-    tcRet = tcData.fetchData(codeList)
-    log.debug(tcRet)
+    qtData = dataFromTencent().fetchData(list(codeData.keys()))
+    log.debug(qtData)
