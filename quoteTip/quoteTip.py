@@ -56,7 +56,7 @@ class TCQtIdx(IntEnum):
     CURRENT_VOLUME = 29  # 当前成交量
     QUOTE_DATETIME = 30  # 行情日期时间
     NET_CHG = 31  # 涨跌额
-    PCT_CHG = 32  # 涨跌幅（%）
+    CHG_PCT = 32  # 涨跌幅（%）
     HIGH_PRICE = 33  # 最高价格
     LOW_PRICE = 34  # 最低价格
     LAST_VOLUME_AMOUNT = 35  # 最新价/成交量(手)/成交额(元)
@@ -119,7 +119,7 @@ class dataFromTencent():
             return False
 
     def _parseData(self, text, codeList):
-        ret = {}
+        res = {}
 
         log.debug(text)
         qtList = text.split(';\n')[:-1]  # 每一条数据都是以';\n'结尾，split之后最后一项就是空字符串、所以忽略之
@@ -146,19 +146,19 @@ class dataFromTencent():
             # prevClose = info[TCQtIdx.PREV_CLOSE]
             # openPrice = info[TCQtIdx.OPEN_PRICE]
             # netChg = info[TCQtIdx.NET_CHG]
-            pctChg = float(info[TCQtIdx.PCT_CHG])
+            chgPct = float(info[TCQtIdx.CHG_PCT])
             # highPrice = info[TCQtIdx.HIGH_PRICE]
             # lowPrice = info[TCQtIdx.LOW_PRICE]
             # volume = self._getVolume(code, int(info[TCQtIdx.VOLUME] or 0))
             # amount = float(info[TCQtIdx.AMOUNT] or 0) * 10000
             # peTTM = float(info[TCQtIdx.PE_TTM]) if info[TCQtIdx.PE_TTM] else 0.0
             # cap = float(info[TCQtIdx.TOTAL_MARKET_VALUE] or 0) * 100000000
-            ret[code] = [code, chsName, qtDatetime.strftime('%m-%d %H:%M:%S'), lastPrice, pctChg]
+            res[code] = (chsName, qtDatetime.strftime('%m-%d %H:%M:%S'), lastPrice, chgPct)
 
-        return ret
+        return res
 
     def fetchData(self, codeList):
-        ret = None
+        res = None
         for i in range(3):
             try:
                 time.sleep(1)
@@ -174,25 +174,48 @@ class dataFromTencent():
                 #     print(encoding)
                 # text = req.content.decode(req.encoding)
                 text = req.text
-                ret = self._parseData(text, codeList)
+                res = self._parseData(text, codeList)
                 break
             except Exception as e:
                 log.exception('fetch failed: {}'.format(e))
 
-        return ret
+        return res
 
 
 class dataProcess():
     def __init__(self):
-        self.money = 200
         self.buyChgPct = -1.1
         self.sellChgPct = 1.1
-        self.totalChgPct1 = 10
-        self.totalChgPct2 = 10
+        self.totalDownPct = -10
+        self.totalUpPct1 = 10
+        self.totalUpPct2 = 20
 
-    def calData(self, codeData, qtData):
-        for item in dataList:
-            pass
+    def calData(self, codeData, qtData, baseMoney, powerN):
+        res = []
+        for code, basePrice in codeData.items():
+            if code not in qtData:
+                log.warning('code:{} not in qtData'.format(code))
+                continue
+            chsName, qtDatetime, lastPrice, chgPct = qtData[code]
+            totalChgPct = 100 * (lastPrice - basePrice) / basePrice
+            buyOrSell = '无'
+            if totalChgPct <= self.totalDownPct:
+                buyOrSell = '买入'
+            elif totalChgPct >= self.totalUpPct1:
+                if totalChgPct >= self.totalUpPct2:
+                    buyOrSell = '强烈卖出'
+                else:
+                    buyOrSell = '卖出'
+            elif chgPct <= self.buyChgPct:
+                buyOrSell = '买入'
+            elif chgPct >= self.sellChgPct:
+                buyOrSell = '卖出'
+            buyMoney = baseMoney * pow(basePrice / lastPrice, powerN)
+
+            res.append((code, chsName, qtDatetime, lastPrice, '{:.2f}%'.format(chgPct), '{:.2f}%'.format(totalChgPct),
+                        buyOrSell, round(buyMoney, 2)))
+
+        return res
 
 
 if __name__ == '__main__':
@@ -205,3 +228,5 @@ if __name__ == '__main__':
     # codeList = ['sh688001', 'sz000063', 'sh000001']
     qtData = dataFromTencent().fetchData(list(codeData.keys()))
     log.debug(qtData)
+    resData = dataProcess().calData(codeData, qtData, 200, 4)
+    print(resData)
