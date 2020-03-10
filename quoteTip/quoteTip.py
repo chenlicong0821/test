@@ -153,7 +153,7 @@ class dataFromTencent():
             # amount = float(info[TCQtIdx.AMOUNT] or 0) * 10000
             # peTTM = float(info[TCQtIdx.PE_TTM]) if info[TCQtIdx.PE_TTM] else 0.0
             # cap = float(info[TCQtIdx.TOTAL_MARKET_VALUE] or 0) * 100000000
-            res[code] = (chsName, qtDatetime.strftime('%m-%d %H:%M:%S'), lastPrice, chgPct)
+            res[code] = (chsName, qtDatetime, lastPrice, chgPct)
 
         return res
 
@@ -185,7 +185,7 @@ class dataFromTencent():
 class dataProcess():
     def __init__(self):
         self.buyChgPct = -1.1
-        self.sellChgPct = 1.1
+        self.sellChgPct = 1.5
         self.totalDownPct = -10
         self.totalUpPct1 = 10
         self.totalUpPct2 = 20
@@ -195,11 +195,15 @@ class dataProcess():
         for code, basePrice in codeData.items():
             if code not in qtData:
                 log.warning('code:{} not in qtData'.format(code))
+                res.append((code, 'it not in qtData'))
                 continue
             chsName, qtDatetime, lastPrice, chgPct = qtData[code]
             totalChgPct = 100 * (lastPrice - basePrice) / basePrice
+            dtNow = datetime.datetime.now()
             buyOrSell = '无'
-            if totalChgPct <= self.totalDownPct:
+            if dtNow.date() != qtDatetime.date():
+                buyOrSell = '非交易日'
+            elif totalChgPct <= self.totalDownPct:
                 buyOrSell = '买入'
             elif totalChgPct >= self.totalUpPct1:
                 if totalChgPct >= self.totalUpPct2:
@@ -210,10 +214,13 @@ class dataProcess():
                 buyOrSell = '买入'
             elif chgPct >= self.sellChgPct:
                 buyOrSell = '卖出'
+            elif dtNow.weekday() in (0, 1):  # 周一、周二
+                buyOrSell = '买入'
+
             buyMoney = baseMoney * pow(basePrice / lastPrice, powerN)
 
-            res.append((code, chsName, qtDatetime, lastPrice, '{:.2f}%'.format(chgPct), '{:.2f}%'.format(totalChgPct),
-                        buyOrSell, round(buyMoney, 2)))
+            res.append((code, chsName, qtDatetime.strftime('%m-%d %H:%M:%S'), lastPrice, '{:.2f}%'.format(chgPct),
+                        '{:.2f}%'.format(totalChgPct), buyOrSell, round(buyMoney, 2)))
 
         return res
 
