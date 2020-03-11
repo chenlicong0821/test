@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -*- coding: UTF-8 -*-
+# -*- coding: utf-8 -*-
 
 import datetime
 import json
@@ -19,9 +19,7 @@ def logInit(logfile):
 
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s || %(levelname)s || %(name)s || %(filename)s:%(lineno)d || %(message)s',
-                        datefmt='%a %Y/%m/%d %H:%M:%S',
-                        filename=logfile,
-                        filemode='a')
+                        datefmt='%a %Y-%m-%d %H:%M:%S', filename=logfile, filemode='a')
 
 
 class TCQtIdx(IntEnum):
@@ -98,6 +96,7 @@ class dataFromTencent():
     def __init__(self):
         self.STARMarketPattern = re.compile(r'sh68[89]+')
         self.marketIdDict = {'1': 'sh', '51': 'sz'}
+        self.baseUrl = 'http://qt.gtimg.cn/q='
 
     def _getVolume(self, code, rawVolume):
         if (self.STARMarketPattern.match(code)):  # 科创板
@@ -109,29 +108,28 @@ class dataFromTencent():
         if codeFlag.startswith('v_') and (codeFlag[2:] == code):
             return True
         else:
-            log.warning('codeFlag:{} not match code:{}'.format(codeFlag, code))
+            log.warning(f'codeFlag:{codeFlag} not match code:{code}')
             return False
 
     def _checkCodeData(self, codeData, code):
         if self.marketIdDict[codeData[TCQtIdx.MARKET_ID]] + codeData[TCQtIdx.RAW_SYMBOL] == code:
             return True
         else:
-            log.warning('codeFlag:{} not match code:{}'.format(codeFlag, code))
+            log.warning(f'codeData:{codeData} not match code:{code}')
             return False
 
     def _parseData(self, text, codeList):
         res = {}
 
-        log.debug(text)
-        qtList = text.split(';\n')[:-1]  # 每一条数据都是以';\n'结尾，split之后最后一项就是空字符串、所以忽略之
+        log.debug(f'text to be parsed:{text}')
+        # 每一条数据都是以';\n'结尾，split之后最后一项就是空字符串、所以忽略之
+        qtList = text.split(';\n')[:-1]
         for i, qt in enumerate(qtList):
             codeFlag, codeData = qt.split('=')
             info = codeData.strip('"').split('~')
 
-            # idx = 0
-            # for item in info:
+            # for idx, item in enumerate(info):
             #     print(idx, item, TCQtIdx._value2member_map_[idx])
-            #     idx += 1
 
             code = codeList[i]
             if not (self._checkCodeFlag(codeFlag, code) and self._checkCodeData(info, code)):
@@ -140,7 +138,7 @@ class dataFromTencent():
             qtDatetime = info[TCQtIdx.QUOTE_DATETIME]
             qtDatetime = datetime.datetime.strptime(qtDatetime, "%Y%m%d%H%M%S")
             if qtDatetime < datetime.datetime(2020, 1, 1):
-                log.warning("quoteTime {} incorrect".format(qtDatetime))
+                log.warning(f"quoteTime {qtDatetime} incorrect")
                 continue
             chsName = info[TCQtIdx.CHS_NAME]
             lastPrice = float(info[TCQtIdx.LAST_PRICE])
@@ -161,8 +159,7 @@ class dataFromTencent():
     def fetchData(self, codeList, retry=True):
         res = {}
         try:
-            baseUrl = 'http://qt.gtimg.cn/q='
-            url = baseUrl + ','.join(codeList)
+            url = self.baseUrl + ','.join(codeList)
             req = requests.get(url, timeout=2)
             if 200 == req.status_code:
                 # print(req.headers['Content-Type'])
@@ -170,23 +167,24 @@ class dataFromTencent():
                 # if match:
                 #     encoding = match.group(1)
                 #     print(encoding)
+                log.info(f'Get {url} success')
                 # text = req.content.decode(req.encoding)
                 text = req.text
                 res = self._parseData(text, codeList)
             else:
-                log.warning('Get {} failed, ret code:{}' % (url, req.status_code))
                 if retry:
+                    log.warning(f'Get {url} failed, ret code:{req.status_code}')
                     time.sleep(2)
                     return self.fetchData(codeList, retry=False)
-                log.error('Get {} failed after retry, ret code:{}' % (url, req.status_code))
+                log.error(f'Get {url} failed after retry, ret code:{req.status_code}')
         except requests.RequestException as e:
-            log.error('Get {} failed, error:{}' % (url, e))
             if retry:
+                log.error(f'Get {url} failed, error:{e}')
                 time.sleep(2)
                 return self.fetchData(codeList, retry=False)
-            log.error('Get {} failed after retry, error:{}' % (url, e))
+            log.error(f'Get {url} failed after retry, error:{e}')
         except Exception as e:
-            log.exception('fetch failed: {}'.format(e))
+            log.exception(f'fetch failed: {e}')
 
         return res
 
@@ -194,60 +192,64 @@ class dataFromTencent():
 class dataProcess():
     def __init__(self):
         self.buyChgPct = -1.1
-        self.sellChgPct = 1.5
+        self.sellChgPct = 1.2
         self.totalDownPct = -10
         self.totalUpPct1 = 10
         self.totalUpPct2 = 20
 
+    def _getTradeSuggest(self, dtNow, qtDatetime, totalChgPct, chgPct):
+        suggest = '无'
+        if dtNow.date() != qtDatetime.date():
+            suggest = '非交易日'
+        elif totalChgPct <= self.totalDownPct:
+            suggest = '买入'
+        elif totalChgPct >= self.totalUpPct1:
+            if totalChgPct >= self.totalUpPct2:
+                suggest = '强烈卖出'
+            else:
+                suggest = '卖出'
+        elif chgPct <= self.buyChgPct:
+            suggest = '买入'
+        elif chgPct >= self.sellChgPct:
+            suggest = '卖出'
+        elif dtNow.weekday() in (0, 1):  # 周一、周二
+            suggest = '买入'
+
+        return suggest
+
     def calData(self, codeData, qtData, baseMoney, powerN):
         res = []
         try:
+            dtNow = datetime.datetime.now()
             for code, basePrice in codeData.items():
                 if code not in qtData:
-                    log.warning('code:{} not in qtData'.format(code))
+                    log.warning(f'code:{code} not in qtData')
                     res.append((code, 'it not in qtData'))
                     continue
+
                 chsName, qtDatetime, lastPrice, chgPct = qtData[code]
-                totalChgPct = 100 * (lastPrice - basePrice) / basePrice
-                dtNow = datetime.datetime.now()
-                buyOrSell = '无'
-                if dtNow.date() != qtDatetime.date():
-                    buyOrSell = '非交易日'
-                elif totalChgPct <= self.totalDownPct:
-                    buyOrSell = '买入'
-                elif totalChgPct >= self.totalUpPct1:
-                    if totalChgPct >= self.totalUpPct2:
-                        buyOrSell = '强烈卖出'
-                    else:
-                        buyOrSell = '卖出'
-                elif chgPct <= self.buyChgPct:
-                    buyOrSell = '买入'
-                elif chgPct >= self.sellChgPct:
-                    buyOrSell = '卖出'
-                elif dtNow.weekday() in (0, 1):  # 周一、周二
-                    buyOrSell = '买入'
+                totalChgPct = round(100 * (lastPrice - basePrice) / basePrice, 2)
+                tradeSuggest = self._getTradeSuggest(dtNow, qtDatetime, totalChgPct, chgPct)
+                buyMoney = round(baseMoney * pow(basePrice / lastPrice, powerN), 2)
 
-                buyMoney = baseMoney * pow(basePrice / lastPrice, powerN)
-
-                res.append((code, chsName, qtDatetime.strftime('%m-%d %H:%M:%S'), lastPrice, '{:.2f}%'.format(chgPct),
-                            '{:.2f}%'.format(totalChgPct), buyOrSell, round(buyMoney, 2)))
+                res.append((code, chsName, qtDatetime.strftime('%m-%d %H:%M:%S'), f'{lastPrice}',
+                            f'{round(chgPct, 2)}%', f'{totalChgPct}%', tradeSuggest, f'{buyMoney}'))
         except Exception as e:
-            log.exception('fetch failed: {}'.format(e))
+            log.exception(f'fetch failed: {e}')
 
         return res
 
 
 class msgSend():
     def __init__(self):
-        self.DDGroupToken = '414e08cc157d6229a5361cd0fe38bb5bec7cffc3bbee31cc5458adeecfb73bd1'
+        self.DDGroupUrl = 'https://oapi.dingtalk.com/robot/send?access_token=414e08cc157d6229a5361cd0fe38bb5bec7cffc3bbee31cc5458adeecfb73bd1'
 
     def _sendDDGrp(self, text, retry=True):
         try:
             data = {'msgtype': 'text', 'text': {"content": text}}
             headers = {'Content-Type': "application/json; charset=utf-8"}
             timeout = (2, 5)
-            baseUrl = 'https://oapi.dingtalk.com/robot/send?access_token='
-            url = baseUrl + self.DDGroupToken
+            url = self.DDGroupUrl
             r = requests.post(url=url, headers=headers, data=json.dumps(data), timeout=timeout)
             if r.status_code == 200:
                 res = r.json()
@@ -255,19 +257,19 @@ class msgSend():
                     return "OK"
                 else:
                     reason = res.get('errmsg').encode('utf8')
-                    log.warning(f'send msg to {url} failed, reason:{reason}')
+                    log.error(f'send msg to {url} failed, reason:{reason}')
                     return 'ERROR'
             else:
-                log.error(f'send msg to {url} failed, ret code:{r.status_code}')
                 if retry:
-                    sleep(3)
+                    log.warning(f'send msg to {url} failed, ret code:{r.status_code}')
+                    time.sleep(3)
                     return self._sendDDGrp(text, retry=False)
                 log.error(f'send msg to {url} failed after retry, ret code:{r.status_code}')
                 return "ERROR"
         except requests.RequestException as e:
-            log.error(f'send msg to {url} failed, error:{e}')
             if retry:
-                sleep(3)
+                log.error(f'send msg to {url} failed, error:{e}')
+                time.sleep(3)
                 return self._sendDDGrp(text, retry=False)
             log.error(f'send msg to {url} failed after retry, error:{e}')
             return "ERROR"
@@ -277,9 +279,11 @@ class msgSend():
 
     def send(self, sendData):
         sep = '\n'
-        sendData = [('code', 'chsName', 'qtDatetime', 'lastPrice', 'chgPct', 'totalChgPct', 'buyOrSell',
+        sendData = [('code', 'chsName', 'qtDatetime', 'lastPrice', 'chgPct', 'totalChgPct', 'tradeSuggest',
                      'buyMoney')] + sendData
-        content = [str(line) for line in sendData]
+        content = [', '.join(line) for line in sendData]
+        dtNow = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
+        content.append(f'{sep}time: {dtNow}')
         msg = sep.join(content)
 
         DDGroupRet = self._sendDDGrp(msg)
@@ -296,6 +300,8 @@ if __name__ == '__main__':
     codeData = {'sh000001': 3021.2, 'sh000919': 4902.99, 'sh000922': 4381.25}
     # codeList = ['sh688001', 'sz000063', 'sh000001']
     qtData = dataFromTencent().fetchData(list(codeData.keys()))
-    log.debug(qtData)
+    log.info(f'qtData:{qtData}')
     resData = dataProcess().calData(codeData, qtData, 200, 4)
-    msgSend().send(resData)
+    log.info(f'resData:{resData}')
+    sendRes = msgSend().send(resData)
+    log.info(f'message send {sendRes}')
